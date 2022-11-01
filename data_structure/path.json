@@ -1,0 +1,26 @@
+{
+  "path/to/file": {
+    "dir_1": {
+      "type": "dir|file",
+      "update_time": "文件的更新时间",
+      "size": "int byte"
+    },
+    "dir_2": {
+      "type": "dir|file",
+      "update_time": "文件的更新时间",
+      "size": "int byte"
+    }
+  },
+  "path/to/file3": {
+    "dir_1": {
+      "type": "dir|file",
+      "update_time": "文件的更新时间",
+      "size": "int byte"
+    },
+    "dir_2": {
+      "type": "dir|file",
+      "update_time": "文件的更新时间",
+      "size": "int byte"
+    }
+  }
+}
