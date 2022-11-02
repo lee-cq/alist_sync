@@ -1,12 +1,10 @@
 import abc
 import atexit
 import logging
-import os
 import time
 import urllib.parse
-from abc import ABCMeta
 from pathlib import Path
-from typing import List
+from typing import List, Iterable
 
 logger = logging.getLogger('alist.sync.operator')
 
@@ -63,9 +61,14 @@ class _OperatorBase(metaclass=abc.ABCMeta):
     def search_path(self, path) -> dict:
         """查询一个路径"""
 
-    def search_item(self, path, item_dir) -> dict:
+    @abc.abstractmethod
+    def search_items(self, item_dir) -> Iterable:
         """"""
-        return self.search_path(path).get(item_dir)
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def all_sub_path(self) -> Iterable:
+        """返回全部的sub_path"""
 
     @abc.abstractmethod
     def update_path(self, path, item_value):
@@ -130,6 +133,19 @@ class JsonOperator(_OperatorBase, ):
         from json import dumps
         lens = self.path.write_text(dumps(self.data, ensure_ascii=False), encoding='utf8')
         logger.info('Save to %s, size %d', str(self.path), lens)
+
+    def search_items(self, item_dir) -> Iterable:
+        """"""
+        for it in self.data[item_dir]:
+            yield it
+
+    def all_sub_path(self) -> Iterable:
+        """返回全部的sub_path"""
+        return {x for i in self.item_dirs for x in self.search_items(i)}
+
+    def verify_item_value(self, path, item_value) -> bool:
+        raise NotImplementedError()
+
 
     def search_path(self, path):
         try:
