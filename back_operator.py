@@ -24,8 +24,11 @@ class _OperatorBase(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def verify_item_value(self, item_value) -> bool:
-        """验证值是否正确"""
+    def verify_item_value(self, path, item_value) -> bool:
+        """验证值是否正确
+        :param path:
+        :param item_value
+        """
         raise NotImplementedError()
 
     @property
@@ -140,7 +143,7 @@ class JsonOperator(_OperatorBase, ):
 
     def update_path(self, path, item_value):
         item_dir, sub_path = self.verify_path_relative_item_base(path)
-        if self.verify_item_value(item_value):
+        if self.verify_item_value(path, item_value):
             if self.data.get(item_dir) is None:
                 self.data[item_dir] = dict()
             self.data[item_dir][sub_path] = item_value

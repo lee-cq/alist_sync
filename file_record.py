@@ -13,10 +13,10 @@ class FileRecord(Operator):
         "size": lambda x: x is None or isinstance(x, int) and x >= 0
     }
 
-    def verify_item_value(self, value: dict) -> bool:
+    def verify_item_value(self, path, item_value: dict) -> bool:
         for key, v in self.data_model_item.items():
-            if not v(value[key]):
-                logging.getLogger('alist.sync.operator').debug('Error: %s : %s is NOT success ', key, value[key])
+            if not v(item_value[key]):
+                logging.getLogger('alist.sync.operator').debug('Error: %s : %s is NOT success ', key, item_value[key])
                 return False
         return True
 
