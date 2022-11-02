@@ -24,7 +24,13 @@ class UpdatingCache(Operator):
         logger.info('Rewrite Json File path from <%s> to <%s>', path, new_path, )
         return new_path
 
-    def verify_item_value(self, item_value) -> bool:
-        """验证的"""
-        # TODO 验证器
+    def verify_item_value(self, path, item_value) -> bool:
+        """验证的
+        :param path:
+        """
+        data = self.search_path(path)
+        if isinstance(data, (str, bool)):
+            return False
+        if isinstance(item_value, int) and isinstance(data, int):
+            return False
         return True
