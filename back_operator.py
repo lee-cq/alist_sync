@@ -147,12 +147,12 @@ class JsonOperator(_OperatorBase, ):
         raise NotImplementedError()
 
 
-    def search_path(self, path):
+    def search_path(self, path, default=None):
         try:
             _item, _sub_path = self.verify_path_relative_item_base(path)
-            return self.data.get(_item, dict()).get(_sub_path)
+            return self.data.get(_item, dict()).get(_sub_path, default)
         except ValueError:
-            return self.data.get(path)
+            return self.data.get(path, default)
 
     def select_path(self, path):
         return self.search_path(path)
