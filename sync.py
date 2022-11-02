@@ -51,6 +51,16 @@ class Sync:
         else:
             raise
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.__del__()
+
+    def __del__(self):
+        del self.files_record
+        del self.update_cache
+
     def scan_update_file(self):
         """扫描更新的文件"""
         for item in self.items:
