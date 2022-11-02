@@ -79,11 +79,12 @@ class _OperatorBase(metaclass=abc.ABCMeta):
         pass
 
 
-class JsonOperator(_OperatorBase, metaclass=ABCMeta):
+class JsonOperator(_OperatorBase, ):
     """"""
 
     def _init(self):
         self.data = dict()
+        self._close = False
 
         self.path = Path(self.uri_parse.path)
         if self.path.exists():
@@ -93,8 +94,13 @@ class JsonOperator(_OperatorBase, metaclass=ABCMeta):
         self._thread()
         logger.debug('Json Operation Init Success . ')
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __del__(self):
         self.dumps_data()
+        self._close = True
+        logger.debug('%s is EOL.', type(self).__name__)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.__del__()
 
     def __enter__(self):
         return self
@@ -104,14 +110,13 @@ class JsonOperator(_OperatorBase, metaclass=ABCMeta):
         def dump_in_thread():
             logger.info('sub_thread is running .')
             hash_data = hash(str(self.data))
-            while True:
+            while not self._close:
                 time.sleep(5)
                 if hash_data != hash(str(self.data)):
                     self.dumps_data()
                     hash_data = hash(str(self.data))
-                else:
-                    logger.debug(f'data hash Not change. skip dumps pid=%d, new_pid=%d', _pid, os.getpid())
-                    logger.info(f'{logger.handlers = }')
+
+            logger.info(f'dump thread break. ')
 
         from threading import Thread
 
