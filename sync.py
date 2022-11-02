@@ -74,8 +74,10 @@ class Sync:
             return
 
         for file_dic in self.alist_client.fs_list_iter(in_dir):
-            name = file_dic.get('name')
             path = Path(in_dir).joinpath(file_dic.get('name')).as_posix()
+            if self.update_cache.search_path(path) is not None:
+                logger.debug('%s not None, skip .', path)
+                continue
             self.logger.debug('%s is dir -- %s', path, file_dic.get('is_dir'))
             if file_dic.get('is_dir'):
                 self.scan_file_in_item(path)
@@ -85,8 +87,7 @@ class Sync:
                 if op_time == 0:
                     self.files_record.update_path(path, file_dic)
                 self.update_cache.update_path(path, time_2_timestamp(file_dic.get('modified')) - op_time)
-        self.update_cache.update_path(in_dir, 'success')
-        # TODO 优化中断恢复方案
+        self.update_cache.update_path(in_dir, True)
 
     @staticmethod
     def get_dict_max_key(dic: dict):
