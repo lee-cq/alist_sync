@@ -66,6 +66,15 @@ class Sync:
         for item in self.items:
             self.scan_file_in_item(item)
 
+        items = {Path(i) for i in self.items}
+        for sub_path in self.update_cache.all_sub_path():
+            path = {i.joinpath(sub_path).as_posix() for i in items}
+            source_path = self.get_dict_max_key({k: self.update_cache.search_path(k, 0) for k in path})
+            for p in path:
+                if p == source_path:
+                    continue
+                self.update_cache.update_path(p, source_path)
+
     def scan_file_in_item(self, in_dir):
         """扫描更新文件"""
         self.logger.info('Scan Dir %s', in_dir)
