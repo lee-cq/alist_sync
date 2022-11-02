@@ -146,7 +146,6 @@ class JsonOperator(_OperatorBase, ):
     def verify_item_value(self, path, item_value) -> bool:
         raise NotImplementedError()
 
-
     def search_path(self, path, default=None):
         try:
             _item, _sub_path = self.verify_path_relative_item_base(path)
@@ -165,7 +164,7 @@ class JsonOperator(_OperatorBase, ):
             self.data[item_dir][sub_path] = item_value
             logger.info('update data[%s][%s] = %s', item_dir, sub_path, item_value)
         else:
-            raise ValueError(f'item_value 验证失败。')
+            raise ValueError(f'item_value 验证失败, {type(self).__name__} -> {item_value}')
 
     def create_path(self, path, item_value):
         return self.update_path(path, item_value)
@@ -176,6 +175,8 @@ class JsonOperator(_OperatorBase, ):
             del self.data[item_dir][sub_path]
         except ValueError:
             del self.data[path]
+        except KeyError:
+            logger.debug('%s do not exists.')
 
 
 class MysqlOperator:

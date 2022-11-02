@@ -1,0 +1,59 @@
+version: 1
+
+formatters:
+  brief:
+    format: '%(message)s'
+  default:
+    format: '[%(asctime)s] %(levelname)-7s [%(filename)s-%(funcName)s:%(lineno)d] %(message)s'
+#  custom:
+#    (): my.package.customFormatterFactory
+#    bar: baz
+#    spam: 99.9
+#    answer: 42
+
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: default
+    level: DEBUG
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.handlers.RotatingFileHandler
+    formatter: default
+    filename: logs/sync.log
+    maxBytes: 10240000
+    backupCount: 3
+
+
+loggers:
+#  '':
+#    level: DEBUG
+#    handlers:
+#      - console
+#      - file
+  alist.sync.Sync:
+    level: DEBUG
+    handlers:
+      - console
+
+  alist.sync.operator:
+    level: DEBUG
+    handlers:
+      - console
+
+  alist.sync.updating_cache:
+    level: DEBUG
+    handlers:
+      - console
+
+  alist.sync.file_record:
+    level: DEBUG
+    handlers:
+      - console
+
+  alist.tools:
+    level: DEBUG
+    handlers:
+      - console

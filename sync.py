@@ -39,14 +39,16 @@ class Sync:
 
         self.files_record = FileRecord(config['cache_path'])
         self.update_cache = UpdatingCache(config['cache_path'])
-        self.alist_client = AlistClient(config['alist_prefix'])
 
         self.update_cache.set_item_dirs(self.items)
         self.files_record.set_item_dirs(self.items)
 
+        self.alist_client = AlistClient(config['alist_prefix'])
+
         if config.get('alist_token'):
             self.alist_client.set_token(config.get('alist_token'))
         elif config.get('alist_username'):
+            self.logger.info('login user<%s> to %s', config['alist_username'], config['alist_prefix'])
             self.alist_client.login(config['alist_username'], config['alist_password'])
         else:
             raise
@@ -68,12 +70,15 @@ class Sync:
 
         items = {Path(i) for i in self.items}
         for sub_path in self.update_cache.all_sub_path():
-            path = {i.joinpath(sub_path).as_posix() for i in items}
-            source_path = self.get_dict_max_key({k: self.update_cache.search_path(k, 0) for k in path})
-            for p in path:
-                if p == source_path:
-                    continue
-                self.update_cache.update_path(p, source_path)
+            paths = {i.joinpath(sub_path).as_posix() for i in items}
+            source_path = self.get_dict_max_key({k: self.update_cache.search_path(k, 0) for k in paths})
+            if not source_path:
+                self.logger.info('%s 无需同步 ...', sub_path)
+                [self.update_cache.delete_path(p) for p in paths]
+                continue
+
+            self.update_cache.delete_path(source_path)
+            [self.update_cache.update_path(p, source_path) for p in paths if p != source_path]
 
     def scan_file_in_item(self, in_dir):
         """扫描更新文件"""
@@ -101,6 +106,8 @@ class Sync:
     def get_dict_max_key(self, dic: dict):
         """Get Key from a dict"""
         self.logger.debug('Get max value %s', dic)
+        if not all(type(i) == int for i in dic.values()):
+            return None
         max_val = max(dic.values())
         if max_val == 0:
             return None
@@ -112,7 +119,7 @@ class Sync:
         :return Noting, Doing, Down
         """
 
-    def copy_file(self, sor, target, file):
+    def copy_file(self, sor, target):
         """拷贝文件
 
         1. 验证目标文件是否存在  是 -> 2,   否 -> 3
@@ -125,26 +132,9 @@ class Sync:
         4. 调用 task/copy/undone 接口，检查是否已经添加 task
         5. 将 目标path update_time  设置为 upping
         """
-        try:
-            old_s = self.alist_client.fs_get(Path(target).joinpath(file))
-            if old_s:
-                self.alist_client.fs_copy()
-                self.alist_client.create_file('md5.json')
-
-        except Exception:
-            """"""
 
     def sync_files(self):
         """update"""
-        for path, up_cache in self.update_cache.items():
-            update_item = self.get_dict_max_key(up_cache)
-            for item in self.items:
-                if item == update_item:
-                    continue
-
-                self.alist_client.fs_copy(Path(item).joinpath(path).parent, Path(item).joinpath(path).parent,
-                                          Path(path).name)
-                self.verify_copying()
 
 
 def test_copy():
