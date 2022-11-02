@@ -89,9 +89,9 @@ class Sync:
                 self.update_cache.update_path(path, time_2_timestamp(file_dic.get('modified')) - op_time)
         self.update_cache.update_path(in_dir, True)
 
-    @staticmethod
-    def get_dict_max_key(dic: dict):
+    def get_dict_max_key(self, dic: dict):
         """Get Key from a dict"""
+        self.logger.debug('Get max value %s', dic)
         max_val = max(dic.values())
         if max_val == 0:
             return None
@@ -139,11 +139,13 @@ class Sync:
 
 
 def test_copy():
+    """"""
     pass
 
 
 if __name__ == '__main__':
-    import logging.config, yaml
+    import logging.config
+    import yaml
 
     logging.config.dictConfig(yaml.safe_load(open('logger_config.yml').read()))
 
@@ -151,5 +153,7 @@ if __name__ == '__main__':
 
     conf = json.loads(open('config.json').read())
 
-    s = Sync(conf['sync_group'][0])
-    s.scan_update_file()
+    Sync(conf['sync_group'][0]).scan_update_file()
+    # with Sync(conf['sync_group'][0]) as s:
+    #     s.scan_update_file()
+    print('off')
