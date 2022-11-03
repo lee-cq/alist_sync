@@ -57,28 +57,36 @@ class Sync:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.logger.debug('%s will exiting', type(self).__name__)
         self.__del__()
 
     def __del__(self):
+        self.logger.debug('%s will deleting', type(self).__name__)
         del self.files_record
         del self.update_cache
 
     def scan_update_file(self):
         """扫描更新的文件"""
+        if self.update_cache.is_lock():
+            self.logger.info('UpdatingCache is locked, skip scan update files. ')
+            return
         for item in self.items:
             self.scan_file_in_item(item)
 
         items = {Path(i) for i in self.items}
         for sub_path in self.update_cache.all_sub_path():
+            if sub_path == '.':
+                continue
             paths = {i.joinpath(sub_path).as_posix() for i in items}
             source_path = self.get_dict_max_key({k: self.update_cache.search_path(k, 0) for k in paths})
             if not source_path:
-                self.logger.info('%s 无需同步 ...', sub_path)
+                self.logger.info('%s < not changed, do not need sync ...', sub_path)
                 [self.update_cache.delete_path(p) for p in paths]
                 continue
 
             self.update_cache.delete_path(source_path)
             [self.update_cache.update_path(p, source_path) for p in paths if p != source_path]
+            self.update_cache.lock()
 
     def scan_file_in_item(self, in_dir):
         """扫描更新文件"""
@@ -152,7 +160,7 @@ if __name__ == '__main__':
 
     conf = json.loads(open('config.json').read())
 
-    Sync(conf['sync_group'][0]).scan_update_file()
-    # with Sync(conf['sync_group'][0]) as s:
-    #     s.scan_update_file()
+    # Sync(conf['sync_group'][0]).scan_update_file()
+    with Sync(conf['sync_group'][0]) as s:
+        s.scan_update_file()
     print('off')

@@ -84,6 +84,18 @@ class _OperatorBase(metaclass=abc.ABCMeta):
     def delete_path(self, path):
         pass
 
+    @abc.abstractmethod
+    def lock(self):
+        """锁定"""
+
+    @abc.abstractmethod
+    def is_lock(self):
+        """"""
+
+    @abc.abstractmethod
+    def unlock(self):
+        """"""
+
 
 class JsonOperator(_OperatorBase, ):
     """"""
@@ -95,8 +107,9 @@ class JsonOperator(_OperatorBase, ):
         self.path = Path(self.uri_parse.path)
         if self.path.exists():
             from json import loads
+            logger.info('%s > 从文件 %s 加载JSON对象', type(self).__name__, self.path)
             self.data = loads(self.path.read_text(encoding='utf8'))
-        atexit.register(self.dumps_data)
+        # atexit.register(self.dumps_data)
         self._thread()
         logger.debug('Json Operation Init Success . ')
 
@@ -106,6 +119,7 @@ class JsonOperator(_OperatorBase, ):
         logger.debug('%s is EOL.', type(self).__name__)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self._close = True
         self.__del__()
 
     def __enter__(self):
@@ -157,6 +171,8 @@ class JsonOperator(_OperatorBase, ):
         return self.search_path(path)
 
     def update_path(self, path, item_value):
+        if self.is_lock():
+            raise BlockingIOError
         item_dir, sub_path = self.verify_path_relative_item_base(path)
         if self.verify_item_value(path, item_value):
             if self.data.get(item_dir) is None:
@@ -167,16 +183,32 @@ class JsonOperator(_OperatorBase, ):
             raise ValueError(f'item_value 验证失败, {type(self).__name__} -> {item_value}')
 
     def create_path(self, path, item_value):
+        if self.is_lock():
+            raise BlockingIOError
         return self.update_path(path, item_value)
 
     def delete_path(self, path):
+        if self.is_lock():
+            raise BlockingIOError
         try:
             item_dir, sub_path = self.verify_path_relative_item_base(path)
             del self.data[item_dir][sub_path]
         except ValueError:
             del self.data[path]
         except KeyError:
-            logger.debug('%s do not exists.')
+            logger.debug('%s do not exists.', path)
+
+    def lock(self):
+        self.data['lock'] = True
+
+    def is_lock(self):
+        return self.data.get('lock', False)
+
+    def unlock(self):
+        try:
+            del self.data['lock']
+        except KeyError:
+            pass
 
 
 class MysqlOperator:
