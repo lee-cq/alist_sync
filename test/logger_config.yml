@@ -5,12 +5,6 @@ formatters:
     format: '%(message)s'
   default:
     format: '[%(asctime)s] %(levelname)-7s [%(filename)s-%(funcName)s:%(lineno)d] %(message)s'
-#  custom:
-#    (): my.package.customFormatterFactory
-#    bar: baz
-#    spam: 99.9
-#    answer: 42
-
 
 handlers:
   console:
@@ -28,32 +22,7 @@ handlers:
 
 
 loggers:
-#  '':
-#    level: DEBUG
-#    handlers:
-#      - console
-#      - file
-  alist.sync.Sync:
-    level: DEBUG
-    handlers:
-      - console
-
-  alist.sync.operator:
-    level: DEBUG
-    handlers:
-      - console
-
-  alist.sync.updating_cache:
-    level: DEBUG
-    handlers:
-      - console
-
-  alist.sync.file_record:
-    level: DEBUG
-    handlers:
-      - console
-
-  alist.tools:
+  alist:
     level: DEBUG
     handlers:
       - console
