@@ -1,8 +1,7 @@
 import logging
-from pathlib import Path
 
-from operator_json import JsonOperator as Operator
-from tools import time_2_timestamp
+from .operator_json import JsonOperator as Operator
+from .tools import time_2_timestamp
 
 logger = logging.getLogger('alist.sync.file_record')
 
@@ -28,17 +27,3 @@ class FileRecord(Operator):
             if _ not in keys:
                 del item_value[_]
         return super().update_path(path, item_value)
-
-
-if __name__ == '__main__':
-    import logging.config
-    import yaml
-
-    logging.config.dictConfig(yaml.safe_load(open('logger_config.yml').read()))
-    log = logging.getLogger('alist.sync')
-    log.info(f'start file record file. ')
-    stat = FileRecord('json:///tmp/tmp.json')  # ('json:///tmp/tmp.json')
-    stat.set_item_dirs(['/item'])
-    stat.create_path('/item/sub', {'modified': '123', 'size': 222})
-    log.info(f'END')
-    Path('/tmp/tmp.json').unlink(missing_ok=True)

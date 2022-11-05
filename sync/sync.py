@@ -9,10 +9,12 @@ import json
 import logging
 import time
 from pathlib import PurePosixPath as Path
-from file_record import FileRecord
+
 from alist_client import Client as AlistClient
-from tools import time_2_timestamp
-from updating_cache import UpdatingCache
+
+from .file_record import FileRecord
+from .tools import time_2_timestamp
+from .updating_cache import UpdatingCache
 
 
 class Sync:
@@ -32,7 +34,7 @@ class Sync:
     }
 
     """
-    logger = logging.getLogger('alist.sync.Sync')
+    logger = logging.getLogger('alist.sync.sync')
 
     def __init__(self, config: dict):
 
@@ -63,14 +65,18 @@ class Sync:
 
     def __del__(self):
         self.logger.debug('%s will deleting', type(self).__name__)
-        del self.files_record
-        del self.update_cache
+        try:
+            del self.files_record
+            del self.update_cache
+        except AttributeError:
+            pass
 
     def scan_update_file(self):
         """扫描更新的文件"""
         if self.update_cache.is_lock():
             self.logger.info('UpdatingCache is locked, skip scan update files. ')
             return
+
         for item in self.items:
             self.scan_file_in_item(item)
 
@@ -86,11 +92,15 @@ class Sync:
                 continue
 
             self.update_cache.delete_path(source_path)
-            [self.update_cache.update_path(p, {'source': source_path,
-                                               'status': 'Init',
-                                               'time': time.time()
-                                               }) for p in paths if p != source_path]
-            self.update_cache.lock()
+            [self.update_cache.update_path(p,
+                                           {'source': source_path,
+                                            'status': 'Init',
+                                            'time': time.time()
+                                            })
+             for p in paths if p != source_path
+             ]
+        # 注意缩进
+        self.update_cache.lock()
 
     def scan_file_in_item(self, in_dir):
         """扫描更新文件"""
@@ -102,7 +112,7 @@ class Sync:
         for file_dic in self.alist_client.fs_list_iter(in_dir):
             path = Path(in_dir).joinpath(file_dic.get('name')).as_posix()
             if self.update_cache.search_path(path) is not None:
-                logger.debug('%s not None, skip .', path)
+                self.logger.debug('%s not None, skip .', path)
                 continue
             self.logger.debug('%s is dir -- %s', path, file_dic.get('is_dir'))
             if file_dic.get('is_dir'):
@@ -162,13 +172,14 @@ if __name__ == '__main__':
     import logging.config
     import yaml
 
-    logging.config.dictConfig(yaml.safe_load(open('logger_config.yml').read()))
+    logging.config.dictConfig(yaml.safe_load(open('../test/logger_config.yml').read()))
 
     logger = logging.getLogger('alist')
-
     conf = json.loads(open('config.json').read())
 
-    # Sync(conf['sync_group'][0]).scan_update_file()
+    # sync(conf['sync_group'][0]).scan_update_file()
     with Sync(conf['sync_group'][0]) as s:
         s.scan_update_file()
+
+
     print('off')

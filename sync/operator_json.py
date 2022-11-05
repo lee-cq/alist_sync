@@ -10,8 +10,9 @@ import time
 import threading
 from pathlib import Path
 from typing import Iterable
+from json import loads
 
-from operator_base import OperatorBase
+from .operator_base import OperatorBase
 
 __all__ = ['JsonOperator']
 
@@ -27,9 +28,8 @@ class JsonOperator(OperatorBase, ):
 
         self.path = Path(self.uri_parse.path)
         if self.path.exists():
-            from json import loads
             logger.info('%s > 从文件 %s 加载JSON对象', type(self).__name__, self.path)
-            self.data = loads(self.path.read_text(encoding='utf8'))
+            self.data = loads(self.path.read_text(encoding='utf8') or '{}')
 
         self._thread()
         logger.debug('Json Operation Init Success . ')
@@ -47,9 +47,10 @@ class JsonOperator(OperatorBase, ):
         return self
 
     def _thread(self):
+        self_name = type(self).__name__
 
         def dump_in_thread():
-            logger.info('sub_thread is running .')
+            logger.info(f'{self_name} sub_thread is running .')
             hash_data = hash(str(self.data))
             while not self._close:
                 time.sleep(5)
@@ -57,10 +58,10 @@ class JsonOperator(OperatorBase, ):
                     self.dumps_data()
                     hash_data = hash(str(self.data))
 
-            logger.info(f'dump thread break. ')
+            logger.info(f'{self_name} dump thread break. ')
 
-        threading.Thread(target=dump_in_thread, name='dump_data').start()
-        logger.info('定时Save 线程已开启.')
+        threading.Thread(target=dump_in_thread, name=f'{self_name}_dump_data').start()
+        logger.info(f"{self_name}'s sub thread is started, main thead will go on.")
 
     def dumps_data(self):
         from json import dumps
