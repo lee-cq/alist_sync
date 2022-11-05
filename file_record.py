@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from back_operator import JsonOperator as Operator
+from operator_json import JsonOperator as Operator
 from tools import time_2_timestamp
 
 logger = logging.getLogger('alist.sync.file_record')
@@ -31,7 +31,8 @@ class FileRecord(Operator):
 
 
 if __name__ == '__main__':
-    import logging.config, yaml
+    import logging.config
+    import yaml
 
     logging.config.dictConfig(yaml.safe_load(open('logger_config.yml').read()))
     log = logging.getLogger('alist.sync')
