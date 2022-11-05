@@ -1,0 +1,9 @@
+# UpdatingCache 解析后的状态
+
+# Key_path 是目标路径，源路径在字段 source 存储。
+
+sync_item_dir_1:
+  sub_path_1:
+    source: SourcePath
+    copying_name: CpName
+    status: Init|OldMoving|OldCreateInfo|OldMoved|NewCopying|NewCopied|UpdatingNewInfo

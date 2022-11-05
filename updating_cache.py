@@ -25,8 +25,9 @@ class UpdatingCache(Operator):
         return new_path
 
     def verify_item_value(self, path, item_value) -> bool:
-        """验证的
+        """
         :param path:
+        :param item_value:
         """
         data = self.search_path(path)
         if isinstance(data, (str, bool)):
@@ -34,3 +35,16 @@ class UpdatingCache(Operator):
         if isinstance(item_value, int) and isinstance(data, int):
             return False
         return True
+
+    def update_status(self, path, key, value):
+        """Update Status key"""
+        data = self.search_path(path)
+        if not isinstance(data, dict):
+            raise TypeError(f'Init Error, {path} should be inited to a dict, rather than type {type(data)}')
+        data[key] = value
+        if self.is_lock():
+            self.unlock()
+            self.update_path(path, data)
+            self.lock()
+        else:
+            self.update_path(path, data)

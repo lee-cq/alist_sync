@@ -1,5 +1,4 @@
 import abc
-import atexit
 import logging
 import time
 import urllib.parse
@@ -156,6 +155,11 @@ class JsonOperator(_OperatorBase, ):
     def all_sub_path(self) -> Iterable:
         """返回全部的sub_path"""
         return {x for i in self.item_dirs for x in self.search_items(i)}
+
+    def all_full_path(self) -> Iterable:
+        for item in self.item_dirs:
+            for sub in self.data.get(item, dict()).keys():
+                yield Path(item).joinpath(sub).as_posix()
 
     def verify_item_value(self, path, item_value) -> bool:
         raise NotImplementedError()

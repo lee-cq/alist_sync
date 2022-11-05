@@ -7,6 +7,7 @@
 """
 import json
 import logging
+import time
 from pathlib import PurePosixPath as Path
 from file_record import FileRecord
 from alist_client import Client as AlistClient
@@ -85,7 +86,10 @@ class Sync:
                 continue
 
             self.update_cache.delete_path(source_path)
-            [self.update_cache.update_path(p, source_path) for p in paths if p != source_path]
+            [self.update_cache.update_path(p, {'source': source_path,
+                                               'status': 'Init',
+                                               'time': time.time()
+                                               }) for p in paths if p != source_path]
             self.update_cache.lock()
 
     def scan_file_in_item(self, in_dir):
@@ -120,6 +124,10 @@ class Sync:
         if max_val == 0:
             return None
         return list(dic.keys())[list(dic.values()).index(max_val)]
+
+    # Scan File
+    # ==============================
+    # Move Old File To Backup Dir
 
     def verify_copying(self, path):
         """验证正在进行copy
