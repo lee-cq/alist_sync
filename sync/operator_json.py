@@ -24,7 +24,6 @@ class JsonOperator(OperatorBase, ):
 
     def _init(self):
         self.data = dict()
-        self._close = False
 
         self.path = Path(self.uri_parse.path)
         if self.path.exists():
@@ -36,7 +35,6 @@ class JsonOperator(OperatorBase, ):
 
     def __del__(self):
         self.dumps_data()
-        self._close = True
         logger.debug('%s is EOL.', type(self).__name__)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -52,15 +50,15 @@ class JsonOperator(OperatorBase, ):
         def dump_in_thread():
             logger.info(f'{self_name} sub_thread is running .')
             hash_data = hash(str(self.data))
-            while not self._close:
+            while True:
                 time.sleep(5)
                 if hash_data != hash(str(self.data)):
                     self.dumps_data()
                     hash_data = hash(str(self.data))
 
-            logger.info(f'{self_name} dump thread break. ')
+            # logger.info(f'{self_name} dump thread break. ')
 
-        threading.Thread(target=dump_in_thread, name=f'{self_name}_dump_data').start()
+        threading.Thread(target=dump_in_thread, name=f'{self_name}_dump_data', daemon=True).start()
         logger.info(f"{self_name}'s sub thread is started, main thead will go on.")
 
     def dumps_data(self):

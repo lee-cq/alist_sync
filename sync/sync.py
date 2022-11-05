@@ -65,11 +65,6 @@ class Sync:
 
     def __del__(self):
         self.logger.debug('%s will deleting', type(self).__name__)
-        try:
-            del self.files_record
-            del self.update_cache
-        except AttributeError:
-            pass
 
     def scan_update_file(self):
         """扫描更新的文件"""
