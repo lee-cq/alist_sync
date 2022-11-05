@@ -6,7 +6,6 @@ from pathlib import Path
 from urllib.request import urlopen, Request
 
 logger = logging.getLogger('alist.client')
-logger.setLevel('DEBUG')
 
 
 class AlistException(Exception):
@@ -17,7 +16,7 @@ class HTTPRequestException(AlistException):
     pass
 
 
-class AlistServerExpcetion(AlistException):
+class AlistServerException(AlistException):
     pass
 
 
@@ -101,7 +100,7 @@ class _Client:
         elif resp.getcode() == 403 or resp_json['code'] == 403:
             raise NoAuth(f'{resp_json["code"]}: {resp_json["message"]}')
         elif resp.getcode() // 100 == 5 or resp_json['code'] // 100 == 5:
-            raise AlistServerExpcetion(f'{resp_json["code"]}: {resp_json["message"]}')
+            raise AlistServerException(f'{resp_json["code"]}: {resp_json["message"]}')
         else:
             raise HTTPRequestException(f'{resp_json["code"]}: {resp_json["message"]}')
 
@@ -228,32 +227,5 @@ class _ClientFs(_Client):
 
 
 class Client(_ClientFs, _Client):
+    """客户端集成"""
     pass
-
-
-def debug_log():
-    logger_fmt = logging.Formatter(r'[%(asctime)s] %(levelname)s %(lineno)d - %(message)s')
-    cs = logging.StreamHandler()
-    cs.setFormatter(logger_fmt)
-    cs.setLevel('DEBUG')
-    logger.addHandler(cs)
-
-
-def login():
-    debug_log()
-    Client(base_url='https://alist.leecq.cn/api').login('test', 'test')
-
-
-def fs_list():
-    debug_log()
-    s = Client(base_url='https://alist.leecq.cn/api')
-    s.set_token(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjoxNjY2ODM2NzE0LCJuYmYiOjE2NjY2NjM5MTQsImlhdCI6MTY2NjY2MzkxNH0.pRkLvqbxfdNesyKW3oLxd_LoL2JwucqD4LX8CSLfNj0')
-    s.fs_copy('/local/test_dir/test/t1', '/local/test_dir/test/', 'test1.txt')
-    # s.fs_mkdir('/onedrive/tmp/test/t1')
-
-    print(s)
-
-
-if __name__ == '__main__':
-    fs_list()
