@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+"""
+@File Name  : client.py
+@Author     : LeeCQ
+@Date-Time  : 2022/11/5 22:19
+"""
+
 import http.client
 import logging
 import urllib.parse
@@ -5,31 +13,9 @@ from json import dumps, loads
 from pathlib import Path
 from urllib.request import urlopen, Request
 
+from .error import *
+
 logger = logging.getLogger('alist.client')
-
-
-class AlistException(Exception):
-    pass
-
-
-class HTTPRequestException(AlistException):
-    pass
-
-
-class AlistServerException(AlistException):
-    pass
-
-
-class NoAuth(AlistException):
-    pass
-
-
-class BadResponse(AlistException):
-    pass
-
-
-class LoginError(AlistException):
-    pass
 
 
 class AlistApi:
@@ -217,15 +203,22 @@ class _ClientFs(_Client):
         return self.urlopen('POST', AlistApi.fs_remove, json=data)
 
     def fs_from(self):
+        """"""
         raise NotImplementedError
 
     def fs_link(self):
+        """"""
         raise NotImplementedError
 
     def fs_add_aria2(self):
+        """"""
         raise NotImplementedError
 
 
-class Client(_ClientFs, _Client):
+class ClientAdmin(_Client):
+    pass
+
+
+class Client(_ClientFs):
     """客户端集成"""
     pass
