@@ -1,0 +1,12 @@
+# 配置文件
+
+sync_group:
+  - name: test
+    alist_prefix: http://localhost:5245/api
+    alist_username: admin
+    alist_password: '*******'
+    alist_token:
+    items:
+      - /onedrive/tmp
+      - /local/
+    cache_path: json:///tmp/sync_t1.json
