@@ -5,12 +5,13 @@
 @Author     : LeeCQ
 @Date-Time  : 2022/11/5 21:28
 """
+import atexit
 import logging
 import time
 import threading
 from pathlib import Path
 from typing import Iterable
-from json import loads
+from json import loads, dumps
 
 from .operator_base import OperatorBase
 
@@ -19,7 +20,7 @@ __all__ = ['JsonOperator']
 logger = logging.getLogger('alist.sync.operator.json')
 
 
-class JsonOperator(OperatorBase, ):
+class JsonOperator(OperatorBase):
     """"""
 
     def _init(self):
@@ -31,6 +32,7 @@ class JsonOperator(OperatorBase, ):
             self.data = loads(self.path.read_text(encoding='utf8') or '{}')
 
         self._thread()
+        atexit.register(self.dumps_data)
         logger.debug('Json Operation Init Success . ')
 
     def __del__(self):
@@ -62,7 +64,6 @@ class JsonOperator(OperatorBase, ):
         logger.info(f"{self_name}'s sub thread is started, main thead will go on.")
 
     def dumps_data(self):
-        from json import dumps
         lens = self.path.write_text(dumps(self.data, ensure_ascii=False), encoding='utf8')
         logger.info('Save to %s, size %d', str(self.path), lens)
 
