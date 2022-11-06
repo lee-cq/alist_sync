@@ -66,42 +66,55 @@ class Sync:
     def __del__(self):
         self.logger.debug('%s will deleting', type(self).__name__)
 
+    # Init
+    # ============================
+    # Scan update file
+
     def scan_update_file(self):
         """扫描更新的文件"""
         if self.update_cache.is_lock():
-            self.logger.info('UpdatingCache is locked, skip scan update files. ')
+            self.logger.warning('UpdatingCache is locked, skip scan update files. ')
             return
 
+        self.logger.info('Begin Scan Sync dirs, %s', self.items)
         for item in self.items:
             self.scan_file_in_item(item)
 
-        items = {Path(i) for i in self.items}
+        self.logger.info('Begin parse what file need Update.')
         for sub_path in self.update_cache.all_sub_path():
             if sub_path == '.':
                 continue
-            paths = {i.joinpath(sub_path).as_posix() for i in items}
-            source_path = self.get_dict_max_key({k: self.update_cache.search_path(k, 0) for k in paths})
-            if not source_path:
-                self.logger.info('%s < not changed, do not need sync ...', sub_path)
-                [self.update_cache.delete_path(p) for p in paths]
-                continue
 
-            self.update_cache.delete_path(source_path)
-            [self.update_cache.update_path(p,
-                                           {'source': source_path,
-                                            'status': 'Init',
-                                            'time': time.time()
-                                            })
-             for p in paths if p != source_path
-             ]
-        # 注意缩进
-        self.update_cache.lock()
+            self.scan_file_parse(sub_path)
+
+        if any(not isinstance(self.update_cache.select_path(i), int) for i in self.update_cache.all_full_path()):
+            self.update_cache.lock()
+        else:
+            self.update_cache.unlock()
+            raise NotParseSuccessError()
+
+    def scan_file_parse(self, sub_path):
+        paths = {Path(i).joinpath(sub_path).as_posix() for i in self.items}
+        source_path = self.get_dict_max_key({k: self.update_cache.search_path(k, 0) for k in paths})
+        if not source_path:
+            self.logger.info('%s < not changed, do not need sync ...', sub_path)
+            [self.update_cache.delete_path(p) for p in paths]
+            return
+
+        self.update_cache.delete_path(source_path)
+        [self.update_cache.update_path(p,
+                                       {'source': source_path,
+                                        'status': UpdateStat.init,
+                                        'time': time.time()
+                                        })
+         for p in paths if p != source_path
+         ]
 
     def scan_file_in_item(self, in_dir):
         """扫描更新文件"""
         self.logger.info('Scan Dir %s', in_dir)
         if self.update_cache.search_path(in_dir):  # 已经缓存的跳过
-            logger.info('目录 %s 已经缓存完成，跳过 ... ', in_dir)
+            self.logger.info('The dir %s has cached, skip ... ', in_dir)
             return
 
         for file_dic in self.alist_client.fs_list_iter(in_dir):
@@ -161,20 +174,3 @@ class Sync:
 def test_copy():
     """"""
     pass
-
-
-if __name__ == '__main__':
-    import logging.config
-    import yaml
-
-    logging.config.dictConfig(yaml.safe_load(open('../test/logger_config.yml').read()))
-
-    logger = logging.getLogger('alist')
-    conf = json.loads(open('config.json').read())
-
-    # sync(conf['sync_group'][0]).scan_update_file()
-    with Sync(conf['sync_group'][0]) as s:
-        s.scan_update_file()
-
-
-    print('off')
