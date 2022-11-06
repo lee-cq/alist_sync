@@ -5,16 +5,32 @@
 @Author     : LeeCQ
 @Date-Time  : 2022/10/29 17:23
 """
-import json
+import hashlib
 import logging
+import threading
 import time
+from json import dumps
 from pathlib import PurePosixPath as Path
+from queue import Queue
 
+import alist_client.error
 from alist_client import Client as AlistClient
 
 from .file_record import FileRecord
 from .tools import time_2_timestamp
 from .updating_cache import UpdatingCache
+from .error import *
+
+
+class UpdateStat:
+    """"""
+    init = 'Init'
+    moving_old = 'MovingOld'
+    create_old_info = 'CreateOldInfo'
+    moved_old = 'MovedOld'
+    copying_new = 'CopyingNew'
+    copied_new = 'CopiedNew'
+    end = 'END'
 
 
 class Sync:
@@ -31,6 +47,7 @@ class Sync:
         "/local/tmp/"
       ],
       "cache_uri": "json:///tmp/alist_sync_t1.json"
+      "backup_dir_name": "@alist_sync_backup"
     }
 
     """
@@ -39,9 +56,13 @@ class Sync:
     def __init__(self, config: dict):
 
         self.items = config.get('items')
+        self.alist_sync_backup_dir = '.alist_sync_backup'
 
         self.files_record = FileRecord(config['cache_path'])
         self.update_cache = UpdatingCache(config['cache_path'])
+
+        self.queue_copy_new = Queue(maxsize=10)
+        self.queue_copy_verify = Queue(maxsize=10)
 
         self.update_cache.set_item_dirs(self.items)
         self.files_record.set_item_dirs(self.items)
@@ -56,6 +77,8 @@ class Sync:
         else:
             raise
 
+        self.mkdir_items_backup_dir()
+
     def __enter__(self):
         return self
 
@@ -65,6 +88,11 @@ class Sync:
 
     def __del__(self):
         self.logger.debug('%s will deleting', type(self).__name__)
+
+    def mkdir_items_backup_dir(self):
+        for i in self.items:
+            path = Path(i).joinpath(self.alist_sync_backup_dir).as_posix()
+            self.alist_client.fs_mkdir(path)
 
     # Init
     # ============================
@@ -122,6 +150,9 @@ class Sync:
             if self.update_cache.search_path(path) is not None:
                 self.logger.debug('%s not None, skip .', path)
                 continue
+            if file_dic.get('name') == self.alist_sync_backup_dir:
+                self.logger.debug('skip %s', self.alist_sync_backup_dir)
+                continue
             self.logger.debug('%s is dir -- %s', path, file_dic.get('is_dir'))
             if file_dic.get('is_dir'):
                 self.scan_file_in_item(path)
@@ -146,6 +177,98 @@ class Sync:
     # Scan File
     # ==============================
     # Move Old File To Backup Dir
+
+    def sync(self):
+        """同步 Main"""
+        self.scan_update_file()
+        if not self.update_cache.is_lock():
+            raise NotParseSuccessError()
+
+        threading.Thread(target=self.move_old_file, name='move_old_file').start()
+        threading.Thread(target=self.verify_moving_file, name='verify_move').start()
+        # threading.Thread(target=self.sync_new_file, name='sync_new_file').start()
+        # threading.Thread(target=self.verify_copying, name='verify_copying').start()
+
+    def move_old_file(self):
+        """"""
+        for target_path, data in self.update_cache.all_full_path(with_value=True):
+            if not isinstance(data, dict):
+                self.logger.info('%s\' data is not a dict, skip. (%s)', target_path, type(data))
+                continue
+
+            if data['status'] != UpdateStat.init:
+                self.logger.info('%s\' status not init, skip. (%s)', target_path, data['status'])
+                continue
+
+            self.move_a_old_file(target_path)
+
+    @staticmethod
+    def del_old_file_info_item(old_fs_info: dict) -> dict:
+        save_keys = ["name", "size", "modified", "sign", "type", "provider"]
+        for k in old_fs_info.copy().keys():
+            if k in save_keys:
+                del old_fs_info[k]
+        return old_fs_info
+
+    def move_a_old_file(self, target_path):
+        try:
+            old_fs_info = self.alist_client.fs_get(target_path)
+        except alist_client.error.AlistServerException as _e:
+            self.update_cache.update_status(target_path, 'status', UpdateStat.moved_old)
+            return
+
+        try:
+            item_dir, sub_path = self.update_cache.break_path_relative_item_base(target_path)
+            path_hash = hashlib.md5(target_path.encode()).hexdigest()
+
+            old_fs_info = self.del_old_file_info_item(old_fs_info)
+            old_fs_info['path'] = target_path
+            old_fs_info['hash'] = path_hash
+            self.update_cache.update_status(target_path, 'target_old_info', old_fs_info)
+
+            self.alist_client.fs_move(
+                src_dir=Path(target_path).parent.as_posix(),
+                dst_dir=Path(item_dir).joinpath(self.alist_sync_backup_dir).as_posix(),
+                name=Path(target_path).name
+            )
+            self.alist_client.fs_rename(
+                Path(item_dir).joinpath(self.alist_sync_backup_dir).joinpath(Path(target_path).name).as_posix(),
+                path_hash + Path(target_path).suffix
+            )
+            self.update_cache.update_status(target_path, 'status', UpdateStat.moving_old)
+            self.logger.info('moving file [%s -> %s]', target_path,
+                             Path(item_dir).joinpath(self.alist_sync_backup_dir).joinpath(path_hash).as_posix()
+                             )
+        except KeyError:
+            raise
+
+    def verify_moving_file(self):
+        while True:
+            all_for = []
+            for target_path, data in self.update_cache.all_full_path(with_value=True):
+                item_dir, sub_path = self.update_cache.break_path_relative_item_base(target_path)
+                path_hash = hashlib.md5(target_path.encode()).hexdigest()
+                backup_path = Path(item_dir).joinpath(f'{self.alist_sync_backup_dir}/{path_hash}').with_suffix(
+                    Path(target_path).suffix).as_posix()
+
+                all_for.append(data.get('status') != UpdateStat.moving_old)
+                if data.get('status') != UpdateStat.moving_old:
+                    continue
+
+                try:
+                    self.alist_client.fs_get(backup_path)
+                    self.alist_client.fs_create_file(Path(backup_path).with_suffix('.json'), dumps(data.get('target_old_info')))
+                    self.update_cache.update_status(target_path, 'status', UpdateStat.moved_old)
+                    self.logger.info('moved file [ %s -> %s , INFO_FILE: %s]', target_path, backup_path,
+                                     Path(backup_path).with_suffix('.json'))
+                except alist_client.error.AlistServerException:
+                    pass
+
+            time.sleep(5)
+
+            if all(all_for):
+                self.logger.info('No have Moving Status\'s Task, %s has stopped.', __name__)
+                break
 
     def verify_copying(self, path):
         """验证正在进行copy

@@ -5,7 +5,7 @@ import time
 
 def time_2_timestamp(_t: str) -> int:
     """时间戳转换"""
-    logging.getLogger('alist.tools').debug('%s 输入参数 _t=%s', __name__, _t)
+    logging.getLogger('alist.tools').debug('%s input args > _t=%s', __name__, _t)
     if isinstance(_t, str):
         if len(_t) >20:  # 2022-10-24T15:29:14.036070267+08:00
             _t = _t[:19] + 'Z'

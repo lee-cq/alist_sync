@@ -165,7 +165,6 @@ class _ClientFs(_Client):
 
     def fs_mkdir(self, path, exist_ok=True, parents=True):
         """创建目录"""
-        Path().mkdir()
         data = {
             'path': path
         }
@@ -179,12 +178,14 @@ class _ClientFs(_Client):
         }
         return self.urlopen('POST', AlistApi.fs_rename, json=data)
 
-    def fs_move(self, src_dir, dst_dir, *names):
+    def fs_move(self, src_dir, dst_dir, name, *names):
         """移动文件或目录"""
+        names = set(names)
+        names.add(name)
         data = {
             "src_dir": src_dir,
             "dst_dir": dst_dir,
-            "names": names
+            "names": list(names)
         }
         return self.urlopen('POST', AlistApi.fs_move, json=data)
 
