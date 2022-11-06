@@ -10,8 +10,10 @@ logger = logging.getLogger('alist.sync.operator')
 class OperatorBase(metaclass=abc.ABCMeta):
 
     def __init__(self, cache_uri):
+        self.cache_uri = cache_uri
         self.uri_parse = urllib.parse.urlparse(cache_uri)
         self._item_dirs = set()
+        self.name = type(self).__name__
         self._init()
 
     @abc.abstractmethod
@@ -45,9 +47,9 @@ class OperatorBase(metaclass=abc.ABCMeta):
                 x.append(i)
 
         self._item_dirs = set(x)
-        logger.info('set items dir success, %s', self._item_dirs)
+        logger.info('%s set items dir success, %s', self.name, self._item_dirs)
 
-    def verify_path_relative_item_base(self, path):
+    def break_path_relative_item_base(self, path):
         """从Alist总是得到完整的绝对路径，我们需要将Path 分解为 sub_path & item_path"""
         path = Path(path)
         for item_dir in self.item_dirs:
@@ -59,14 +61,21 @@ class OperatorBase(metaclass=abc.ABCMeta):
     def search_path(self, path) -> dict:
         """查询一个路径"""
 
+    def select_path(self, path):
+        return self.search_path(path)
+
     @abc.abstractmethod
-    def search_items(self, item_dir) -> Iterable:
+    def search_items_path(self, item_dir) -> Iterable:
         """"""
         raise NotImplementedError
 
     @abc.abstractmethod
     def all_sub_path(self) -> Iterable:
         """返回全部的sub_path"""
+
+    @abc.abstractmethod
+    def all_full_path(self, with_value=False) -> Iterable:
+        """返回全路径"""
 
     @abc.abstractmethod
     def update_path(self, path, item_value):
