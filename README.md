@@ -6,6 +6,8 @@
 
 1. `backup_id`: 备份任务ID  
 2. `copy_id`: 复制任务ID
+3. `file_id`: 文件sub_path_ID
+4. 
 
 
 ## 初始化同步
@@ -30,7 +32,8 @@ new_table: `backup_log`
 key:  
     `time` 时间  
     `backup_id`  备份任务ID  
-    `status`  记录状态  
+    `sub_path` 文件相对目录  
+    `status`  记录状态[MOVED ,CREATE, SUCCESS, FAIL, FAILBACK]  
     `copy_id`  复制ID
 
 
