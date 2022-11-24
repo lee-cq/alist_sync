@@ -54,6 +54,8 @@ class OperatorBase(metaclass=abc.ABCMeta):
         path = Path(path)
         for item_dir in self.item_dirs:
             if path.is_relative_to(item_dir):
+                if path.relative_to(item_dir).as_posix():
+                    raise ValueError(f'sub_path 必须是一个有效的字符串.')
                 return str(item_dir), path.relative_to(item_dir).as_posix()
         raise ValueError(f'Path 应该相对与一个 item_dirs {self.item_dirs}')
 

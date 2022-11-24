@@ -13,6 +13,7 @@ from typing import Iterable
 
 import pymysql
 
+from tools import timestamp_2_time
 from .operator_base import OperatorBase
 from .error import *
 
@@ -50,19 +51,23 @@ class MySQLApi:
 
     def set_use_db(self, db_name):
         """设置当前数据库"""
+        logger.info('switch to database %s. ', db_name)
         return self._sql.select_db(db_name)
 
     def set_charset(self, charset):
         """设置数据库链接字符集"""
+        logger.info('set mysql connect charset is %s.', charset)
         return self._sql.set_charset(charset)
 
     def set_prefix(self, prefix):
         """设置表前缀"""
+        logger.info('set table prefix is %s.', prefix)
         self.TABLE_PREFIX = prefix
 
     def close(self):
         """关闭数据库连接"""
         self._sql.close()
+        logger.info('Mysql connect is closed.')
 
     def parse_prefix(self, name: str) -> str:
         """返回一个正确的真实的表名称"""
@@ -84,6 +89,7 @@ class MySQLApi:
 
         cur = _sql.cursor()  # 使用cursor()方法获取操作游标
         try:
+            logger.debug('Will Write Something to %s/%s, SQL: %s', self.SQL_HOST, self.SQL_DB, command)
             _c = cur.execute(command, args)
             _sql.commit()  # 提交数据库
             return _c
@@ -104,6 +110,7 @@ class MySQLApi:
 
         try:
             with _sql.cursor() as cur:  # with 语句自动关闭游标
+                logger.debug('Will Write Something to %s/%s, SQL: %s', self.SQL_HOST, self.SQL_DB, command)
                 _c = cur.executemany(command, args)
                 _sql.commit()
             return _c
@@ -163,7 +170,12 @@ class MySQLApi:
 
 
 class OperatorMySQL(OperatorBase):
-    """基于MySQL实现的操作器"""
+    """基于MySQL实现的操作器
+
+    表结构：
+    sub_path, store_name1(item_name), store_name
+
+    """
 
     def _init(self):
         self.sql = MySQLApi(
@@ -176,13 +188,19 @@ class OperatorMySQL(OperatorBase):
         )
         self.operator_table = None
         self.create_operator_table()
+        self.check_table()
+
+    def check_table(self):
+        assert set(self.item_dirs) & set(self.sql.columns_name(self.operator_table)) == set(self.item_dirs)
 
     def create_operator_table(self):
         """创建操作表"""
-        items = ', '.join(f'`{i}` JSON ' for i in self.item_dirs)
+        if not self.operator_table:
+            raise ValueError()
         self.sql.write_db(f"CREATE TABLE IF NOT EXISTS `{self.operator_table}` ("
-                          f" `sub_path` varchar(256) not null , "
-                          f" {items}"
+                          f" `_id` int(8) auto_increment primary key, "
+                          f" `sub_path` varchar(256) unique not null , "
+                          f" {', '.join(f'`{i}` JSON ' for i in self.item_dirs)}"
                           f")"
                           )
 
@@ -222,19 +240,44 @@ class OperatorMySQL(OperatorBase):
                         yield Path(item).joinpath(sub_path).as_posix()
 
     def update_path(self, path, item_value):
-        pass
+        if self.is_lock():
+            raise BlockingIOError
+        item, sub_path = self.break_path_relative_item_base(path)
+
+        data = {
+            'data': item_value,
+            'update_time': timestamp_2_time()
+        }
+
+        self.sql.write_db(
+            f"UPDATE {self.operator_table} SET `{item}`='{json.dumps(data)}' WHERE `sub_path`='{sub_path}'"
+        )
 
     def create_path(self, path, path_value):
-        pass
+        item, sub_path = self.break_path_relative_item_base(path)
+
+        self.sql.write_db(
+            f'INSERT IGNORE INTO {self.operator_table} (`sub_path` ) VALUE ( "{sub_path}")'
+        )
+        self.update_path(path, path_value)
 
     def delete_path(self, path):
-        pass
+        item, sub_path = self.break_path_relative_item_base(path)
+        self.sql.write_db(
+            f'DELETE FROM {self.operator_table} WHERE `sub_path`="{sub_path}"'
+        )
 
     def lock(self):
-        pass
+        self.sql.write_db(
+            f'INSERT IGNORE INTO {self.operator_table} ( `sub_path` ) VALUE ("ALIST_SYNC_CLIENT_LOCK")'
+        )
 
     def is_lock(self):
-        pass
+        return bool(self.sql.read_db(
+            f'SELECT `sub_path` FROM {self.operator_table} where `sub_path`="ALIST_SYNC_CLIENT_LOCK"'
+        ))
 
     def unlock(self):
-        pass
+        self.sql.write_db(
+            f'DELETE FROM {self.operator_table} WHERE `sub_path`="ALIST_SYNC_CLIENT_LOCK"'
+        )
