@@ -5,6 +5,7 @@
 @Author     : LeeCQ
 @Date-Time  : 2022/11/5 21:28
 """
+import abc
 import atexit
 import logging
 import time
@@ -20,7 +21,7 @@ __all__ = ['JsonOperator']
 logger = logging.getLogger('alist.sync.operator.json')
 
 
-class JsonOperator(OperatorBase):
+class JsonOperator(OperatorBase, abc.ABC):
     """"""
 
     def _init(self):
@@ -81,16 +82,12 @@ class JsonOperator(OperatorBase):
                 else:
                     yield Path(item).joinpath(sub).as_posix()
 
-    def verify_item_value(self, path, item_value) -> bool:
-        raise NotImplementedError()
-
     def search_path(self, path, default=None):
         try:
             _item, _sub_path = self.break_path_relative_item_base(path)
             return self.data.get(_item, dict()).get(_sub_path, default)
         except ValueError:
             return self.data.get(path, default)
-
 
     def update_path(self, path, item_value):
         if self.is_lock():
@@ -105,8 +102,6 @@ class JsonOperator(OperatorBase):
             raise ValueError(f'item_value is Error, {self.name}: {path} -> {item_value}')
 
     def create_path(self, path, item_value):
-        if self.is_lock():
-            raise BlockingIOError
         return self.update_path(path, item_value)
 
     def delete_path(self, path):
