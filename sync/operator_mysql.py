@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Iterable
 
 import pymysql
+import pymysql.cursors
 
 from tools import timestamp_2_time
 from .operator_base import OperatorBase
@@ -183,24 +184,43 @@ class OperatorMySQL(OperatorBase):
             port=self.uri_parse.port,
             user=self.uri_parse.username,
             passwd=self.uri_parse.password,
-            db=self.uri_parse.path,
+            db=self.uri_parse.path[1:],
             charset='utf8'
         )
-        self.operator_table = None
+        self.operator_table = self.uri_parse.params_dict['table']
         self.create_operator_table()
-        self.check_table()
+        # self.check_table()
 
     def check_table(self):
-        assert set(self.item_dirs) & set(self.sql.columns_name(self.operator_table)) == set(self.item_dirs)
+        try:
+            assert set(self.item_dirs) & set(self.sql.columns_name(self.operator_table)) == set(self.item_dirs)
+        except ValueError:
+            pass
+
+    def set_item_dirs(self, *item_dirs):
+        super().set_item_dirs(*item_dirs)
+
+        new_items = self.item_dirs - (set(self.sql.columns_name(self.operator_table)) & self.item_dirs)
+        for i in new_items:
+            logger.debug('Add ItemDir to Database %s', i)
+            self.sql.write_db(f'ALTER TABLE `{self.operator_table}` ADD COLUMN `{i}` text;')
+        self.check_table()
 
     def create_operator_table(self):
         """创建操作表"""
         if not self.operator_table:
             raise ValueError()
+        _item_col = ''
+
+        try:
+            _item_col = ', '.join(f'`{i}` JSON ' for i in self.item_dirs)
+        except ValueError:
+            pass
+
         self.sql.write_db(f"CREATE TABLE IF NOT EXISTS `{self.operator_table}` ("
                           f" `_id` int(8) auto_increment primary key, "
-                          f" `sub_path` varchar(256) unique not null , "
-                          f" {', '.join(f'`{i}` JSON ' for i in self.item_dirs)}"
+                          f" `sub_path` varchar(256) unique not null {',' if _item_col else ''} "
+                          f" {_item_col} "
                           f")"
                           )
 
