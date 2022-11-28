@@ -7,11 +7,28 @@ from typing import List, Iterable
 logger = logging.getLogger('alist.sync.operator')
 
 
+class ParseResultUri(urllib.parse.ParseResult):
+    __slots__ = ()
+
+    @property
+    def params_dict(self) -> dict:
+        """"""
+        _dic = dict()
+        for i in str(self.query).split('&'):
+            i = i.split('=', maxsplit=2)
+            if len(i) == 2:
+                logger.debug('parse a params : %s = %s', i[0], i[1])
+                _dic[i[0]] = i[1]
+            else:
+                raise ValueError
+        return _dic
+
+
 class OperatorBase(metaclass=abc.ABCMeta):
 
     def __init__(self, cache_uri):
         self.cache_uri = cache_uri
-        self.uri_parse = urllib.parse.urlparse(cache_uri)
+        self.uri_parse = ParseResultUri(*urllib.parse.urlparse(cache_uri))
         self._item_dirs = set()
         self.name = type(self).__name__
         self._init()

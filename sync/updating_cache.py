@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from sync.operator_json import JsonOperator as Operator
+from sync.operator_json import OperatorJson as Operator
 from urllib.parse import urlparse
 
 logger = logging.getLogger('alist.sync.updating_cache')

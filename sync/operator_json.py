@@ -16,18 +16,23 @@ from json import loads, dumps
 
 from .operator_base import OperatorBase
 
-__all__ = ['JsonOperator']
+__all__ = ['OperatorJson']
 
 logger = logging.getLogger('alist.sync.operator.json')
 
 
-class JsonOperator(OperatorBase, abc.ABC):
+class OperatorJson(OperatorBase, abc.ABC):
     """"""
 
     def _init(self):
         self.data = dict()
 
         self.path = Path(self.uri_parse.path)
+
+        if not self.path.name:
+            logger.error('Value Error 无效的Path, 检查 cache_uri : %s', self.cache_uri)
+            raise ValueError('Value Error 无效的Path, 检查 cache_uri : %s' % self.cache_uri)
+
         if self.path.exists():
             logger.info('%s > 从文件 %s 加载JSON对象', self.name, self.path)
             self.data = loads(self.path.read_text(encoding='utf8') or '{}')

@@ -1,6 +1,6 @@
 import logging
 
-from .operator_json import JsonOperator as Operator
+from .operator_json import OperatorJson as Operator
 from .tools import time_2_timestamp
 
 logger = logging.getLogger('alist.sync.file_record')
